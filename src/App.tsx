@@ -1,13 +1,18 @@
-import { Button } from "antd";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { LoginPage } from "./pages/login_page";
+import { SignupPage } from "./pages/signup_page";
 import './App.css'
 
 function App() {
 
   return (
-    <>
-      <Button type="primary">Button</Button>
-      <h1>Hello, Vite!</h1>
-    </>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </BrowserRouter>
   )
 }
 
