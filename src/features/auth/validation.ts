@@ -36,21 +36,21 @@ export function validateSignup(values: {
 
   return errors;
 }
-export function validateLogin(values: { 
-    email: string; 
-    password: string;
- }) : FieldErrors {
-    const errors: FieldErrors = {};
+export function validateLogin(values: {
+  email: string;
+  password: string;
+}): FieldErrors {
+  const errors: FieldErrors = {};
 
-    if (!values.email.trim()) {
-        errors.email = "Email is required";
-    } else if (!EMAIL_REGEX.test(values.email)) {
-        errors.email = "Invalid email format";
-    }
+  if (!values.email.trim()) {
+    errors.email = "Email is required";
+  } else if (!EMAIL_REGEX.test(values.email)) {
+    errors.email = "Invalid email format";
+  }
 
-    if (!values.password.trim()) {
-        errors.password = "Password is required";
-    }
+  if (!values.password.trim()) {
+    errors.password = "Password is required";
+  }
 
-    return errors;
+  return errors;
 }
