@@ -17,7 +17,7 @@ npm run dev
 ```
 
 Open the printed URL (http://localhost:5173 by default). The app starts on the
-login page and uses the mock API out of the box.
+home page and uses the mock API out of the box.
 
 Demo account: `test@example.com` / `Password123`
 
@@ -43,30 +43,29 @@ responses and sends cookies (`credentials: "include"`).
 
 ## Routes
 
+- `/` - landing page with links to log in or sign up
 - `/login` - email and password sign in
 - `/signup` - create an account, then redirects to `/login`
 - `/dashboard` - protected screen showing the signed in user
-- anything else - redirects to `/login`
 
-`/dashboard` is wrapped in `RequireAuth`, which waits for the session to be
-restored and sends visitors without a session back to `/login`.
+`/dashboard` checks the auth context on mount and sends visitors without a
+session back to `/login`.
 
 ## Project structure
 
 ```
 src/
   components/
-    common/password_input.tsx     shared password field
-    layout/auth_layout.tsx        centered card used by both auth pages
+    common/PasswordInput.tsx      shared password field
+    layout/AuthLayout.tsx         split brand panel + form wrapper
   features/auth/
-    auth_context.ts               auth context + useAuth hook
     validation.ts                 validators and matching antd form rules
     components/
-      auth_provider.tsx           session state, restore on startup
-      require_auth.tsx            route guard
-  pages/                          login, signup, dashboard
+      AuthProvider.tsx            auth context + useAuth hook
+  pages/                          HomePage, LoginPage, SignupPage, DashboardPage
   services/api/                   apiClient, auth endpoints, mock backend
   types/api.ts                    shared API and domain types
+  main.tsx                        app entry point
 ```
 
 ## Notes and limitations

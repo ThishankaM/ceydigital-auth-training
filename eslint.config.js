@@ -18,5 +18,13 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // AuthProvider.tsx deliberately exports its consumer hook next to the
+      // provider, so `useAuth` lives with the context it reads.
+      'react-refresh/only-export-components': [
+        'error',
+        { allowExportNames: ['useAuth'] },
+      ],
+    },
   },
 ])
