@@ -1,11 +1,16 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { Alert, Button, Form, Input, Result, Typography } from "antd";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Alert, Button, Form, Input, Typography } from "antd";
 import { AuthLayout } from "../components/layout/auth_layout";
 import { PasswordInput } from "../components/common/password_input";
-import { validateLogin } from "../features/auth/validation";
-import { login, logout } from "../services/api/auth";
-import type { ApiError, User } from "../types/api";
+import { useAuth } from "../features/auth/auth_context";
+import {
+  EMAIL_RULES,
+  LOGIN_PASSWORD_RULES,
+  validateLogin,
+} from "../features/auth/validation";
+import { login } from "../services/api/auth";
+import type { ApiError, FieldErrors } from "../types/api";
 
 const { Text } = Typography;
 
@@ -17,43 +22,39 @@ type FormValues = {
 type LocationState = {
   registered?: boolean;
   email?: string;
+  from?: string;
 } | null;
 
 export function LoginPage() {
+  const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as LocationState;
+  const { user, signIn } = useAuth();
   const [form] = Form.useForm<FormValues>();
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
-  const [signedInUser, setSignedInUser] = useState<User | null>(null);
 
-  // Field rules reuse the shared validator so the form and the API layer
-  // always agree on what a valid login looks like.
-  const ruleFor = (field: keyof FormValues) => ({
-    validator: async (_rule: unknown, value: string) => {
-      const values = { ...form.getFieldsValue(), [field]: value ?? "" };
-      const errors = validateLogin(values as FormValues);
-      if (errors[field]) {
-        throw new Error(errors[field]);
-      }
-    },
-  });
-
-  const showFieldErrors = (fieldErrors: Record<string, string>) => {
+  const showFieldErrors = (fieldErrors: FieldErrors) => {
     form.setFields(
       Object.entries(fieldErrors).map(([name, error]) => ({
+        // Field names are validated by the API contract, so trust them here.
         name: name as keyof FormValues,
         errors: [error],
       })),
     );
   };
 
+  // Signing in again while a session is active makes no sense.
+  if (user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   const handleSubmit = async (values: FormValues) => {
     setServerError(null);
 
-    const errors = validateLogin(values);
-    if (Object.keys(errors).length > 0) {
-      showFieldErrors(errors);
+    const fieldErrors = validateLogin(values);
+    if (Object.keys(fieldErrors).length > 0) {
+      showFieldErrors(fieldErrors);
       return;
     }
 
@@ -63,7 +64,8 @@ export function LoginPage() {
         email: values.email.trim(),
         password: values.password,
       });
-      setSignedInUser(response.user);
+      signIn(response.user);
+      navigate(state?.from ?? "/dashboard", { replace: true });
     } catch (error) {
       const apiError = error as ApiError;
       setServerError(apiError.message);
@@ -74,34 +76,6 @@ export function LoginPage() {
       setSubmitting(false);
     }
   };
-
-  const handleSignOut = async () => {
-    setSubmitting(true);
-    try {
-      await logout();
-      form.resetFields();
-      setSignedInUser(null);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  if (signedInUser) {
-    return (
-      <AuthLayout>
-        <Result
-          status="success"
-          title={`Welcome back, ${signedInUser.name}!`}
-          subTitle={`Signed in as ${signedInUser.email}`}
-          extra={
-            <Button loading={submitting} onClick={handleSignOut}>
-              Sign out
-            </Button>
-          }
-        />
-      </AuthLayout>
-    );
-  }
 
   return (
     <AuthLayout
@@ -139,16 +113,19 @@ export function LoginPage() {
         initialValues={{ email: state?.email ?? "" }}
         onFinish={handleSubmit}
       >
-        <Form.Item label="Email" name="email" rules={[ruleFor("email")]}>
+        <Form.Item label="Email" name="email" rules={EMAIL_RULES}>
           <Input placeholder="you@example.com" autoComplete="email" />
         </Form.Item>
 
         <Form.Item
           label="Password"
           name="password"
-          rules={[ruleFor("password")]}
+          rules={LOGIN_PASSWORD_RULES}
         >
-          <PasswordInput placeholder="Your password" />
+          <PasswordInput
+            placeholder="Your password"
+            autoComplete="current-password"
+          />
         </Form.Item>
 
         <Form.Item style={{ marginTop: 8, marginBottom: 0 }}>

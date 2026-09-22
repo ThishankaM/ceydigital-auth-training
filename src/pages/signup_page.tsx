@@ -1,11 +1,18 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Alert, Button, Form, Input, Typography } from "antd";
 import { AuthLayout } from "../components/layout/auth_layout";
 import { PasswordInput } from "../components/common/password_input";
-import { validateSignup } from "../features/auth/validation";
+import {
+  CONFIRM_PASSWORD_RULES,
+  EMAIL_RULES,
+  NAME_RULES,
+  PASSWORD_MIN_LENGTH,
+  SIGNUP_PASSWORD_RULES,
+  validateSignup,
+} from "../features/auth/validation";
 import { signup } from "../services/api/auth";
-import type { ApiError } from "../types/api";
+import type { ApiError, FieldErrors } from "../types/api";
 
 const { Text } = Typography;
 
@@ -16,80 +23,92 @@ type FormValues = {
   confirmPassword: string;
 };
 
-export function SignupPage() {
+export function SignUpPage() {
   const navigate = useNavigate();
   const [form] = Form.useForm<FormValues>();
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const redirectTimer = useRef<number | null>(null);
 
-  // Field rules reuse the shared validator so the form and the API layer
-  // always agree on what a valid signup looks like.
-  const ruleFor = (field: keyof FormValues) => ({
-    validator: async (_rule: unknown, value: string) => {
-      const values = { ...form.getFieldsValue(), [field]: value ?? "" };
-      const errors = validateSignup(values as FormValues);
-      if (errors[field]) {
-        throw new Error(errors[field]);
+  // The redirect is a courtesy, so make sure the timer cannot outlive the page.
+  useEffect(() => {
+    return () => {
+      if (redirectTimer.current !== null) {
+        window.clearTimeout(redirectTimer.current);
       }
-    },
-  });
+    };
+  }, []);
 
-  const showFieldErrors = (fieldErrors: Record<string, string>) => {
+  const showFieldErrors = (fieldErrors: FieldErrors) => {
     form.setFields(
       Object.entries(fieldErrors).map(([name, error]) => ({
+        // Field names are validated by the API contract, so trust them here.
         name: name as keyof FormValues,
         errors: [error],
       })),
     );
   };
 
-  const handleSubmit = async (values: FormValues) => {
-    setServerError(null);
-
-    const errors = validateSignup(values);
-    if (Object.keys(errors).length > 0) {
-      showFieldErrors(errors);
+  async function handleFinish(values: FormValues) {
+    const fieldErrors = validateSignup(values);
+    if (Object.keys(fieldErrors).length > 0) {
+      showFieldErrors(fieldErrors);
       return;
     }
 
+    setServerError(null);
     setSubmitting(true);
+    const email = values.email.trim();
+
     try {
       await signup({
         name: values.name.trim(),
-        email: values.email.trim(),
+        email,
         password: values.password,
       });
-
-      navigate("/login", {
-        replace: true,
-        state: { registered: true, email: values.email.trim() },
-      });
-    } catch (error) {
-      const apiError = error as ApiError;
-      setServerError(apiError.message);
-      if (apiError.fieldErrors) {
-        showFieldErrors(apiError.fieldErrors);
-      }
+      setSuccess(true);
+      // Hand the new account over to the login page so it can greet the user.
+      redirectTimer.current = window.setTimeout(() => {
+        navigate("/login", {
+          replace: true,
+          state: { registered: true, email },
+        });
+      }, 1200);
+    } catch (err) {
+      const apiError = err as ApiError;
+      setServerError(
+        apiError.message ?? "Something went wrong. Please try again.",
+      );
       setSubmitting(false);
     }
-  };
+  }
 
   return (
     <AuthLayout
-      title="Create your account"
-      subtitle="Sign up with your name, email and password."
+      title="Create account"
+      subtitle="Sign up to explore the login and dashboard flow."
       footer={
         <Text>
           Already have an account? <Link to="/login">Log in</Link>
         </Text>
       }
     >
+      {success ? (
+        <Alert
+          style={{ marginBottom: 16 }}
+          type="success"
+          showIcon
+          message="Account created successfully. Redirecting to login…"
+        />
+      ) : null}
+
       {serverError ? (
         <Alert
+          style={{ marginBottom: 16 }}
           type="error"
           showIcon
           message={serverError}
-          style={{ marginBottom: 16 }}
         />
       ) : null}
 
@@ -97,25 +116,25 @@ export function SignupPage() {
         form={form}
         layout="vertical"
         requiredMark={false}
+        onFinish={handleFinish}
         disabled={submitting}
-        onFinish={handleSubmit}
       >
-        <Form.Item label="Name" name="name" rules={[ruleFor("name")]}>
+        <Form.Item label="Full name" name="name" rules={NAME_RULES}>
           <Input placeholder="Jane Doe" autoComplete="name" />
         </Form.Item>
 
-        <Form.Item label="Email" name="email" rules={[ruleFor("email")]}>
+        <Form.Item label="Email" name="email" rules={EMAIL_RULES}>
           <Input placeholder="jane@example.com" autoComplete="email" />
         </Form.Item>
 
         <Form.Item
           label="Password"
           name="password"
-          rules={[ruleFor("password")]}
+          rules={SIGNUP_PASSWORD_RULES}
         >
           <PasswordInput
+            placeholder={`At least ${PASSWORD_MIN_LENGTH} characters`}
             autoComplete="new-password"
-            placeholder="At least 6 characters"
           />
         </Form.Item>
 
@@ -123,17 +142,17 @@ export function SignupPage() {
           label="Confirm password"
           name="confirmPassword"
           dependencies={["password"]}
-          rules={[ruleFor("confirmPassword")]}
+          rules={CONFIRM_PASSWORD_RULES}
         >
           <PasswordInput
-            autoComplete="new-password"
             placeholder="Repeat your password"
+            autoComplete="new-password"
           />
         </Form.Item>
 
         <Form.Item style={{ marginTop: 8, marginBottom: 0 }}>
           <Button type="primary" htmlType="submit" block loading={submitting}>
-            Sign up
+            Create account
           </Button>
         </Form.Item>
       </Form>

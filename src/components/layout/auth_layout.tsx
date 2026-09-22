@@ -16,7 +16,17 @@ type AuthLayoutProps = {
  */
 export function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProps) {
     return (
-        <div style={{ width: "100%", padding: "48px 16px", boxSizing: "border-box" }}>
+        <div
+            style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "100%",
+                minHeight: "100vh",
+                padding: "48px 16px",
+                boxSizing: "border-box",
+            }}
+        >
             <Card
                 style={{
                     width: "100%",
