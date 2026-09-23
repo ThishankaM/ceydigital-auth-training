@@ -1,0 +1,7 @@
+{
+  "database-url-var": "DATABASE_URL",
+  "migrations-dir": "database",
+  "migrations-table": "pgmigrations",
+  "schema": "public",
+  "ignore-pattern": "(README\\.md|ddl\\.sql)"
+}

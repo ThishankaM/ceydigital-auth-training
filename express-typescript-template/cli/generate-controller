@@ -1,0 +1,91 @@
+#!/usr/bin/env node
+
+const fs = require("fs");
+const path = require("path");
+
+const arg = process.argv[2];
+const name = arg.trim().toLowerCase();
+
+const content = `
+import { Request, Response } from "express";
+
+import db from "../config/db";
+import { log_error } from "../shared/utils";
+import { DEFAULT_ERROR_MESSAGE } from "../shared/constants";
+import { ServerResponse } from "../shared/server-response";
+
+export async function create(req: Request, res: Response) {
+  try {
+    const q = \`\`;
+    const result = await db.query(q, []);
+    const [data] = result.rows;
+    res.status(200).send(new ServerResponse(true, data));
+  } catch (error: any) {
+    log_error(error);
+    res.status(500).send(new ServerResponse(false, null, DEFAULT_ERROR_MESSAGE));
+  }
+}
+
+export async function get(req: Request, res: Response) {
+  try {
+    const q = \`\`;
+    const result = await db.query(q, []);
+    res.status(200).send(new ServerResponse(true, result.rows));
+  } catch (error: any) {
+    log_error(error);
+    res.status(500).send(new ServerResponse(false, null, DEFAULT_ERROR_MESSAGE));
+  }
+}
+
+export async function getById(req: Request, res: Response) {
+  try {
+    const q = \`\`;
+    const result = await db.query(q, []);
+    const [data] = result.rows;
+    res.status(200).send(new ServerResponse(true, data));
+  } catch (error: any) {
+    log_error(error);
+    res.status(500).send(new ServerResponse(false, null, DEFAULT_ERROR_MESSAGE));
+  }
+}
+
+export async function update(req: Request, res: Response) {
+  try {
+    const q = \`\`;
+    const result = await db.query(q, []);
+    res.status(200).send(new ServerResponse(true, result.rows));
+  } catch (error: any) {
+    log_error(error);
+    res.status(500).send(new ServerResponse(false, null, DEFAULT_ERROR_MESSAGE));
+  }
+}
+
+export async function deleteById(req: Request, res: Response) {
+  try {
+    const q = \`\`;
+    const result = await db.query(q, []);
+    res.status(200).send(new ServerResponse(true, result.rows));
+  } catch (error: any) {
+    log_error(error);
+    res.status(500).send(new ServerResponse(false, null, DEFAULT_ERROR_MESSAGE));
+  }
+}
+`;
+
+const controller = `import * as ${name.replace(/-/g, "_")} from "../controllers/${name}";`;
+const apis = `
+api_router.post("/${name}", ${name.replace(/-/g, "_")}.create);
+api_router.get("/${name}", ${name.replace(/-/g, "_")}.get);
+api_router.get("/${name}/:id", ${name.replace(/-/g, "_")}.getById);
+api_router.put("/${name}/:id", ${name.replace(/-/g, "_")}.update);
+api_router.delete("/${name}/:id", ${name.replace(/-/g, "_")}.deleteById);
+`;
+
+fs.writeFileSync(path.join(__dirname, "../src/controllers", `${name}.ts`), content.trim(), "utf8");
+
+let api = fs.readFileSync(path.join(__dirname, "../src/routes", "api-router.ts"), "utf8");
+api = api.replace("const api_router = express.Router();", `const api_router = express.Router();\n${controller}`);
+api = api.replace("export default api_router;", `${apis.trim()}\n\nexport default api_router;`);
+fs.writeFileSync(path.join(__dirname, "../src/routes", "api-router.ts"), api, "utf8");
+
+console.log(`${name} generated`);

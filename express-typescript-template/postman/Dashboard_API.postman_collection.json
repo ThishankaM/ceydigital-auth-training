@@ -1,0 +1,182 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "Dashboard API (Login Required)",
+    "description": "Signup/login with session cookies, then call the protected dashboard API.\n\nSeed user (from migration):\n- username: intern\n- password: intern123\n\nFlow: **0. Signup** (optional) → **1. Login** → **3. Get Dashboard User**.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "username",
+      "value": "intern"
+    },
+    {
+      "key": "password",
+      "value": "intern123"
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Signup",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Signup succeeded or validation/conflict handled', function () {",
+              "  pm.expect([201, 400, 409]).to.include(pm.response.code);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"first_name\": \"New\",\n  \"last_name\": \"User\",\n  \"email\": \"newuser@example.com\",\n  \"username\": \"newuser\",\n  \"password\": \"password123\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/signup",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "signup"]
+        },
+        "description": "Creates a new user. Required: username, password. Optional: first_name, last_name, email. Validated with express-validator."
+      },
+      "response": []
+    },
+    {
+      "name": "1. Login",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Login succeeded', function () {",
+              "  pm.response.to.have.status(200);",
+              "  const json = pm.response.json();",
+              "  pm.expect(json.authenticated).to.eql(true);",
+              "  pm.expect(json.user).to.be.an('object');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "login"]
+        },
+        "description": "Authenticates with username/password. Sets the session cookie used by protected /api/v1 routes."
+      },
+      "response": []
+    },
+    {
+      "name": "2. Verify Session",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/auth/verify",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "verify"]
+        },
+        "description": "Checks whether the current session is authenticated and returns the user from the session."
+      },
+      "response": []
+    },
+    {
+      "name": "3. Get Dashboard User",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Dashboard returns user data', function () {",
+              "  pm.response.to.have.status(200);",
+              "  const json = pm.response.json();",
+              "  pm.expect(json.done).to.eql(true);",
+              "  pm.expect(json.body).to.have.property('id');",
+              "  pm.expect(json.body).to.have.property('username');",
+              "  pm.expect(json.body).to.not.have.property('password');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/dashboard",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "dashboard"]
+        },
+        "description": "Protected dashboard endpoint. Requires a valid session cookie from Login. Returns the logged-in user's profile (no password)."
+      },
+      "response": []
+    },
+    {
+      "name": "4. Logout",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/auth/logout",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "logout"]
+        },
+        "description": "Destroys the session. Run Login again before calling Get Dashboard User."
+      },
+      "response": []
+    }
+  ]
+}
