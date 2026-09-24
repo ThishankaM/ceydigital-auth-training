@@ -1,17 +1,17 @@
+// src/config/deserialize.ts (or wherever this file is)
 import db from "./db";
 
-// Check whether the user is still exists on the database
-export async function deserialize(id: string, done: any) {
+export async function deserialize(id: any, done: (err: any, user?: any) => void) {
   try {
-    const q = ``;
+    const q = `SELECT id, full_name, email, date_created, date_updated FROM users WHERE id = $1`;
     const result = await db.query(q, [id]);
-    if (result.rows.length) {
-      const [user] = result.rows;
-      if (user)
-        return done(null, user);
+
+    if (result.rows.length === 0) {
+      return done(null, false);
     }
-    return done(null, null);
+
+    done(null, result.rows[0]);
   } catch (error) {
-    return done(error, null);
+    done(error, null);
   }
 }

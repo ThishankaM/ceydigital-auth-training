@@ -20,6 +20,32 @@ const signupValidation = [
   .isLength({ max: 255 }).withMessage("Name must be at most 255 characters long")
 ];
 
+const loginValidation = [
+  body("email")
+    .trim()
+    .notEmpty().withMessage("Email is required")
+    .isEmail().withMessage("Invalid email format"),
+  body("password")
+    .trim()
+    .notEmpty().withMessage("Password is required"),
+];
+
+function validate(req: Request, res: Response, next: NextFunction) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    const fieldErrors: Record<string, string> = {};
+    for (const error of errors.array()) {
+      if (error.type === "field" && !fieldErrors[error.path]) {
+        fieldErrors[error.path] = error.msg;
+      }
+    }
+    return res.status(400).send(
+      new ServerResponse(false, { fieldErrors, data: errors.array() }, "Validation failed")
+    );
+  }
+  next();
+}
+
 function toClientUser(user: any) {
   const name = [user.first_name, user.last_name].filter(Boolean).join(" ")
     || user.username
@@ -49,6 +75,40 @@ function validateSignup(req: Request, res: Response, next: NextFunction) {
 const auth_router = express.Router();
 
 auth_router.post("/signup", signupValidation, validateSignup, user_controller.create);
+
+auth_router.post("/login", loginValidation, validate, (req: Request, res: Response, next: NextFunction) => {
+  passport.authenticate("local", (err: any, user: any, info: any) => {
+    if (err) return next(err);
+
+    if (!user) {
+      return res.status(401).send(
+        new ServerResponse(false, null, info?.message || "Invalid email or password")
+      );
+    }
+
+    // Establishes the session and attaches user to req.user
+    req.logIn(user, (loginErr) => {
+      if (loginErr) return next(loginErr);
+      return res.status(200).send({
+        message: "Login successful",
+        success: true,
+        user: toClientUser(user),
+      });
+    });
+  })(req, res, next);
+});
+
+// ── 3. LOGOUT ──
+auth_router.post("/logout", (req: Request, res: Response, next: NextFunction) => {
+  req.logout((err) => {
+    if (err) return next(err);
+    req.session.destroy((destroyErr) => {
+      if (destroyErr) return next(destroyErr);
+      res.clearCookie(process.env.SESSION_NAME || "connect.sid");
+      return res.status(200).send(new ServerResponse(true, null, "Logged out successfully"));
+    });
+  });
+});
 
 auth_router.get("/verify", (req, res) => {
   if (!req.isAuthenticated() || !req.user) {

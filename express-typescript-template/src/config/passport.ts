@@ -1,14 +1,13 @@
-import {PassportStatic} from "passport";
-
+import { PassportStatic } from "passport";
 import { deserialize } from "./deserialize";
 import LocalLogin from "./passport-strategies/passport-local";
 import { serialize } from "./serialize";
 
-/**
- * Use any passport middleware before the serialize and deserialize
- * @param {Passport} passport
- */
-export default (passport: PassportStatic) => {
+export default function passportConfig(passport: PassportStatic) {
+  // ── 1. Register the local strategy ──
+  passport.use("local", LocalLogin);
+
+  // ── 2. Use your project's serialize and deserialize handlers ──
   passport.serializeUser(serialize);
   passport.deserializeUser(deserialize);
-};
+}
